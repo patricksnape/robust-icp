@@ -11,12 +11,12 @@ if nargin < 3
 end
 
 icp.ROBUST_THRESH = ROBUST_THRESH;
-N = 100;
+VOLUME_SIZE = 100;
 
-[Model, Data] = scale_and_centre(Model, Data, N);
+[Model, Data] = scale_and_centre(Model, Data, VOLUME_SIZE);
 
 % Make model DT
-D = pointclouddt(Model, N);
+D = pointclouddt(Model, VOLUME_SIZE);
 
 % Compute derivatives of D
 dDdX = convn(D, [1,0,-1]/2, 'same');
@@ -24,11 +24,11 @@ dDdY = convn(D, [1,0,-1]'/2, 'same');
 dDdZ = convn(D, cat(3, 1, 0, -1)/2, 'same');
 
 m_estimator = 'huber';
-D = sqrt(awf_m_estimator(m_estimator, D, N));
+D = sqrt(awf_m_estimator(m_estimator, D, VOLUME_SIZE));
 Efactor = 1 ./ (2 * D);
-dDdX = Efactor .* awf_m_estimator(['D' m_estimator], dDdX, N);
-dDdY = Efactor .* awf_m_estimator(['D' m_estimator], dDdY, N);
-dDdZ = Efactor .* awf_m_estimator(['D' m_estimator], dDdZ, N);
+dDdX = Efactor .* awf_m_estimator(['D' m_estimator], dDdX, VOLUME_SIZE);
+dDdY = Efactor .* awf_m_estimator(['D' m_estimator], dDdY, VOLUME_SIZE);
+dDdZ = Efactor .* awf_m_estimator(['D' m_estimator], dDdZ, VOLUME_SIZE);
 
 clf
 BOX = [
@@ -50,15 +50,12 @@ BOX = [
   0 0 1;
   ];
 
-scatter(BOX * (N+1), 'b-')
+scatter(BOX * (VOLUME_SIZE+1), 'b-')
 hold on
-set(scatter(Model(:,[2 1 3]), 'r.'), 'markersize', 0.5)
+set(scatter(Model, 'r.'), 'markersize', 0.5)
 camlight
 hold on
-h = scatter(Data(:,[2 1 3]), '.');
-if size(Data,1) > 1000
-  set(h, 'markersize', 0.1);
-end
+h = scatter(Data, '.');
 view(3)
 drawnow
 
@@ -75,6 +72,8 @@ icp.ModelDx = dDdX;
 icp.ModelDy = dDdY;
 icp.ModelDz = dDdZ;
 icp.handle = h;
+icp.volume_size = VOLUME_SIZE;
+icp.paramscale = [1 1 1 1 VOLUME_SIZE VOLUME_SIZE VOLUME_SIZE];
 
 options = optimset('lsqnonlin');
 options.TypicalX = [1 1 1 1 1 1 1];
@@ -117,19 +116,12 @@ function [dists, J] = icp_error_with_derivs(params, icp)
 
 %% Code:
 %
-PARAMSCALE = [1 1 1 1 100 100 100];
-
+PARAMSCALE = icp.paramscale;
 % SCALE up
 params = params .* PARAMSCALE;
 
 % Compute transformed data points and Jacobians
 [Tdata, Jx, Jy, Jz] = icp_3d_err_transformed(params, icp.Data);
-
-set(icp.handle, ...
-  'xdata', Tdata(:,2), ...
-  'ydata', Tdata(:,1), ...
-  'zdata', Tdata(:,3));
-drawnow
 
 % Index each row of Tdata into the DT.  It's oddly ordered...
 i = (Tdata(:,2));
@@ -144,13 +136,13 @@ ddists_dz = interp3(icp.ModelDz, i, j, k, 'linear');
 ddists_dx(~isfinite(ddists_dx)) = 0;
 ddists_dy(~isfinite(ddists_dy)) = 0;
 ddists_dz(~isfinite(ddists_dz)) = 0;
-[a, b, c] = size(icp.ModelDistanceTransform);
-dists(~isfinite(dists)) = a+b+c;
+dists(~isfinite(dists)) = size(icp.ModelDistanceTransform, 1);
 
 Grad_pdists = [ddists_dx ddists_dy ddists_dz];
 
-dists = dists / 100;
-Grad_pdists = Grad_pdists / 100;
+% Scale back distances
+dists = dists / icp.volume_size;
+Grad_pdists = Grad_pdists / icp.volume_size;
 
 % d/dp f(T(p)) = [d/dx f(x)](T(p)) d/dp T(p)
 %    1 x 7             1 x 3       3 x 7
@@ -177,8 +169,8 @@ fprintf('%5.2f ', params);
 fprintf('err %g\n', norm(dists));
 
 set(icp.handle, ...
-  'xdata', Tdata(:,2), ...
-  'ydata', Tdata(:,1), ...
+  'xdata', Tdata(:,1), ...
+  'ydata', Tdata(:,2), ...
   'zdata', Tdata(:,3));
 drawnow
 
