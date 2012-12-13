@@ -1,4 +1,7 @@
-function [phi, theta] = icp_3dnorm(model, data)
+function [phi, theta, R] = icp_3dnorm(model, data)
+
+% phi = azimuth
+% theta = elevation
 
 % Center model
 model_centre = mean(model);
@@ -11,7 +14,15 @@ data = awf_translate_pts(data, -data_centre);
 model_normals = lsqnormest(model', 4)';
 data_normals = lsqnormest(data', 4)';
 
-[data_phi, data_theta, r] = cart2sph(data_normals(:, 1), data_normals(:, 2), data_normals(:, 3));
+[data_phi, data_theta, ~] = cart2sph(data_normals(:, 1), data_normals(:, 2), data_normals(:, 3));
+[model_phi, model_theta, ~] = cart2sph(model_normals(:, 1), model_normals(:, 2), model_normals(:, 3));
+
+%% Build the kd-tree
+m = [cos(model_phi),     sin(model_phi),  ... 
+     cos(model_theta), sin(model_theta)];
+kdOBJ = KDTreeSearcher(m);
+
+%% Setup variables
 
 eps = 0.00001;
 
@@ -23,19 +34,24 @@ delta_theta = inf;
 
 iterations = 0;
 
-while abs(delta_phi) > eps && abs(delta_theta) > eps
+%% Perform search
+
+while abs(delta_phi) > eps && abs(delta_theta) > eps && iterations < 30
     iterations = iterations + 1;
     
-    [x,y,z] = sph2cart(data_phi + phi, data_theta + theta, r);
-    [matches] = knnsearch(model_normals, [x,y,z]);
+    new_phi = data_phi + phi;
+    new_theta = data_theta + theta;
     
-    model_matches = model_normals(matches, :);
+    d = [cos(new_phi),   sin(new_phi),  ... 
+         cos(new_theta), sin(new_theta)];
+    [matches] = knnsearch(kdOBJ, d);
     
-    [model_phi, model_theta, ~] = cart2sph(model_matches(:, 1), model_matches(:, 2), model_matches(:, 3));
+    model_phi_matches = model_phi(matches);
+    model_theta_matches = model_theta(matches);
     
-    [N, ~] = size(model_matches);
-    delta_phi = sum(sin(data_phi + repmat(phi, [size(model, 1) 1])) - model_phi) / N;
-    delta_theta = sum(sin(data_theta + repmat(theta, [size(model, 1) 1])) - model_theta) / N;
+    N = size(model_phi_matches, 1);
+    delta_phi = sum(sin(data_phi + repmat(phi, [N 1])) - model_phi_matches) / N;
+    delta_theta = sum(sin(data_theta + repmat(theta, [N 1])) - model_theta_matches) / N;
     
     phi = phi + delta_phi;
     theta = theta + delta_theta;
@@ -46,8 +62,6 @@ while abs(delta_phi) > eps && abs(delta_theta) > eps
     fprintf('Iteration %d - Phi: %d Theta: %d err: %d \n', iterations, phi, theta, err); 
 end
 
-[x,y,z] = sph2cart(data_phi + phi, data_theta + theta, r);
-[matches] = knnsearch(model_normals, [x,y,z]);
-model_matches = model_normals(matches, :);
+%% Build cosine rotation matrix
 
-plot_matches([x,y,z], model_matches);
+R = spherical_rotation(phi, theta);
