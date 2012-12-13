@@ -1,4 +1,4 @@
-function [x, R, t] = icp_3dlm(Model, Data, ROBUST_THRESH, initial_p)
+function [x, R, t] = icp_3dlm(Model, Data, initial_p)
 
 % RUN_ICP3D     A function
 %               ...
@@ -6,11 +6,6 @@ function [x, R, t] = icp_3dlm(Model, Data, ROBUST_THRESH, initial_p)
 % Author: Andrew Fitzgibbon <awf@robots.ox.ac.uk>
 % Date: 31 Aug 01
 
-if nargin < 3
-    ROBUST_THRESH = 1000; % i.e. non-robust
-end
-
-icp.ROBUST_THRESH = ROBUST_THRESH;
 VOLUME_SIZE = 100;
 
 [Model, Data] = scale_and_centre(Model, Data, VOLUME_SIZE);
@@ -22,13 +17,6 @@ D = pointclouddt(Model, VOLUME_SIZE);
 dDdX = convn(D, [1,0,-1]/2, 'same');
 dDdY = convn(D, [1,0,-1]'/2, 'same');
 dDdZ = convn(D, cat(3, 1, 0, -1)/2, 'same');
-
-m_estimator = 'huber';
-D = sqrt(awf_m_estimator(m_estimator, D, VOLUME_SIZE));
-Efactor = 1 ./ (2 * D);
-dDdX = Efactor .* awf_m_estimator(['D' m_estimator], dDdX, VOLUME_SIZE);
-dDdY = Efactor .* awf_m_estimator(['D' m_estimator], dDdY, VOLUME_SIZE);
-dDdZ = Efactor .* awf_m_estimator(['D' m_estimator], dDdZ, VOLUME_SIZE);
 
 clf
 BOX = [
@@ -114,7 +102,7 @@ function [dists, J] = icp_error_with_derivs(params, icp)
 %      Jx = N x 7
 %  T(i,j) = Jx .* Dx(TX) + Jy .* Dy(TX) +  Jz .* Dz(TX);
 
-%% Code:
+%% Compte Jacobian and transform data
 %
 PARAMSCALE = icp.paramscale;
 % SCALE up
@@ -124,25 +112,89 @@ params = params .* PARAMSCALE;
 [Tdata, Jx, Jy, Jz] = icp_3d_err_transformed(params, icp.Data);
 
 % Index each row of Tdata into the DT.  It's oddly ordered...
-i = (Tdata(:,2));
-j = (Tdata(:,1));
-k = (Tdata(:,3));
+i = (Tdata(:, 2));
+j = (Tdata(:, 1));
+k = (Tdata(:, 3));
+
+%% Compute distance penalties near boundaries
+distpenalty = zeros(size(Tdata, 1), 1);
+Grad_distpenalty = zeros(size(Tdata, 1), 3);
+
+LO = 3;
+HI = icp.volume_size - 3;
+
+% i < 1 .. clip and add pythagorean penalty
+I = find(i < LO);
+if ~isempty(I)
+  distpenalty(I) = distpenalty(I) + (LO - i(I)).^2;
+  Grad_distpenalty(I, 2) = Grad_distpenalty(I,2) + 2 * (LO - i(I));
+  i(I) = LO;
+end
+
+% j < LO
+I = find(j < LO);
+if ~isempty(I)
+  distpenalty(I) = distpenalty(I) + (LO - j(I)).^2;
+  Grad_distpenalty(I, 1) = Grad_distpenalty(I,1) + 2 * (LO - j(I));
+  j(I) = LO;
+end
+
+% k < LO
+I = find(k < LO);
+if ~isempty(I)
+  distpenalty(I) = distpenalty(I) + (LO - k(I)).^2;
+  Grad_distpenalty(I, 3) = Grad_distpenalty(I,3) + 2 * (LO - k(I));
+  k(I) = LO;
+end
+
+% i >= HI .. clip and add pythagorean penalty
+I = find(i >= HI);
+if ~isempty(I)
+  distpenalty(I) = distpenalty(I) + (i(I) - HI).^2;
+  Grad_distpenalty(I, 2) = Grad_distpenalty(I,2) + 2 * (i(I) - HI);
+  i(I) = HI;
+end
+
+% j >= HI
+I = find(j >= HI);
+if ~isempty(I)
+  distpenalty(I) = distpenalty(I) + (j(I) - HI).^2;
+  Grad_distpenalty(I, 1) = Grad_distpenalty(I,1) + 2 * (j(I) - HI);
+  j(I) = HI;
+end
+
+% k >= HI
+I = find(k >= HI);
+if ~isempty(I)
+  distpenalty(I) = distpenalty(I) + (k(I) - HI).^2;
+  Grad_distpenalty(I, 3) = Grad_distpenalty(I,3) + 2 * (k(I) - HI);
+  k(I) = HI;
+end
+
+%% Interpolate distances and calculate m-estimate
 
 dists = interp3(icp.ModelDistanceTransform, i, j, k, 'linear');
 ddists_dx = interp3(icp.ModelDy, i, j, k, 'linear'); % x,y swapped
 ddists_dy = interp3(icp.ModelDx, i, j, k, 'linear');
 ddists_dz = interp3(icp.ModelDz, i, j, k, 'linear');
 
-ddists_dx(~isfinite(ddists_dx)) = 0;
-ddists_dy(~isfinite(ddists_dy)) = 0;
-ddists_dz(~isfinite(ddists_dz)) = 0;
-dists(~isfinite(dists)) = size(icp.ModelDistanceTransform, 1);
+% Add penalties to distances, so points outside the DT get
+% an upper-bound distance to the model.
+dists = dists + 1e-4;
+pdists = sqrt(awf_m_estimator('huber', dists, icp.volume_size) + distpenalty);
+mprime = awf_m_estimator('Dhuber', dists, icp.volume_size);
+c = mprime ./ (2 * pdists);
 
-Grad_pdists = [ddists_dx ddists_dy ddists_dz];
+dpdists_dx = c .* (ddists_dx + Grad_distpenalty(:, 1));
+dpdists_dy = c .* (ddists_dy + Grad_distpenalty(:, 2));
+dpdists_dz = c .* (ddists_dz + Grad_distpenalty(:, 3));
+Grad_pdists = [dpdists_dx dpdists_dy dpdists_dz];
 
 % Scale back distances
 dists = dists / icp.volume_size;
 Grad_pdists = Grad_pdists / icp.volume_size;
+
+%% Scale Jacobian by distance transform
 
 % d/dp f(T(p)) = [d/dx f(x)](T(p)) d/dp T(p)
 %    1 x 7             1 x 3       3 x 7
@@ -159,7 +211,7 @@ J = J .* PARAMSCALE(ones(size(J,1), 1),:);
 J = double(J);
 dists = double(dists);
 
-% Print iteration information and draw scatter
+%% Print iteration information and draw scatter
 
 global run_icp3d_iter
 fprintf('Iter %3d ', run_icp3d_iter);
