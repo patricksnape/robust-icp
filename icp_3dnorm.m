@@ -34,8 +34,8 @@ while abs(delta_phi) > eps && abs(delta_theta) > eps
     [model_phi, model_theta, ~] = cart2sph(model_matches(:, 1), model_matches(:, 2), model_matches(:, 3));
     
     [N, ~] = size(model_matches);
-    delta_phi = sum(sin(model_phi - data_phi - repmat(phi, [size(model, 1) 1]))) / N;
-    delta_theta = sum(sin(model_theta - data_theta - repmat(theta, [size(model, 1) 1]))) / N;
+    delta_phi = sum(sin(data_phi + repmat(phi, [size(model, 1) 1])) - model_phi) / N;
+    delta_theta = sum(sin(data_theta + repmat(theta, [size(model, 1) 1])) - model_theta) / N;
     
     phi = phi + delta_phi;
     theta = theta + delta_theta;
@@ -45,3 +45,9 @@ while abs(delta_phi) > eps && abs(delta_theta) > eps
       
     fprintf('Iteration %d - Phi: %d Theta: %d err: %d \n', iterations, phi, theta, err); 
 end
+
+[x,y,z] = sph2cart(data_phi + phi, data_theta + theta, r);
+[matches] = knnsearch(model_normals, [x,y,z]);
+model_matches = model_normals(matches, :);
+
+plot_matches([x,y,z], model_matches);
