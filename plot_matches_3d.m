@@ -1,4 +1,4 @@
-function plot_matches(A, B)
+function plot_matches_3d(A, B)
 
     hndl = figure; % creates a plotting window and stores the handle in hndl
     set(hndl,'Renderer','OpenGL');
