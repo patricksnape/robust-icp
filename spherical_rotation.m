@@ -1,13 +1,19 @@
 function [R] = spherical_rotation(az, el)
 
-[x, y, z] = sph2cart(0, 0, 1);
-X = [x, y, z];
 [x, y, z] = sph2cart(az, el, 1);
-Y = [x, y, z];
 
-C = cross(X, Y);
-CX = cross(C, X);
+X = [1        0       0; ...
+     0        cos(x) -sin(x); ...
+     0        sin(x)  cos(x)];
+ 
+Y = [cos(y)   0       sin(y); ...
+     0        1       0; ...
+    -sin(y)   0       cos(y)];
+ 
+Z = [cos(z)  -sin(z)  0; ...
+     sin(z)   cos(z)  0; ...
+     0        0       1];
 
-R = [X/norm(X); C/norm(C); CX/norm(CX)];
+R = Z * Y * X;
 
 end
