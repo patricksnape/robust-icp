@@ -53,5 +53,5 @@ dp = data_phi;
 mt = model_theta(matches, :);
 dt = data_theta;
 
-dists = abs(cos(dp) - cos(mp)) + abs(sin(dp) - sin(mp)) + ...
-        abs(cos(dt) - cos(mt)) + abs(sin(dt) - sin(mt));
+dists = (cos(dp) - cos(mp)).^2 + (sin(dp) - sin(mp)).^2 + ...
+        (cos(dt) - cos(mt)).^2 + (sin(dt) - sin(mt)).^2;
