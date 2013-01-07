@@ -1,4 +1,4 @@
-function [phi, theta, R] = icp_3dnorm(model, data)
+function [phi, theta] = icp_3dnorm(model, data)
 
 % phi = azimuth
 % theta = elevation
@@ -61,7 +61,3 @@ while abs(delta_phi) > eps && abs(delta_theta) > eps && iterations < 30
       
     fprintf('Iteration %d - Phi: %d Theta: %d err: %d \n', iterations, phi, theta, err); 
 end
-
-%% Build cosine rotation matrix
-
-R = spherical_rotation(phi, theta);
