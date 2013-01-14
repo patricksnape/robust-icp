@@ -103,13 +103,13 @@ inp.addParamValue('Boundary', [], @(x)size(x,1) == 1);
 
 inp.addParamValue('EdgeRejection', false, @(x)islogical(x));
 
-inp.addParamValue('Extrapolation', false, @(x)islogical(x));
+inp.addParamValue('Extrapolation', true, @(x)islogical(x));
 
 validMatching = {'bruteForce','Delaunay','kDtree'};
 inp.addParamValue('Matching', 'kDtree', @(x)any(strcmpi(x,validMatching)));
 
-validMinimize = {'point','plane','lmapoint', 'cosine'};
-inp.addParamValue('Minimize', 'plane', @(x)any(strcmpi(x,validMinimize)));
+validMinimize = {'point','plane','lmapoint'};
+inp.addParamValue('Minimize', 'point', @(x)any(strcmpi(x,validMinimize)));
 
 inp.addParamValue('Normals', [], @(x)isreal(x) && size(x,1) == 3);
 
@@ -155,7 +155,7 @@ TT = zeros(3,1, arg.iter+1);
 TR = repmat(eye(3,3), [1,1, arg.iter+1]);
     
 % If Minimize == 'plane', normals are needed
-if ((strcmp(arg.Minimize, 'plane') || strcmp(arg.Minimize, 'cosine')) && isempty(arg.Normals))
+if (strcmp(arg.Minimize, 'plane') && isempty(arg.Normals))
     arg.Normals = lsqnormest(q,4);
 end
 
@@ -230,8 +230,6 @@ for k=1:arg.iter
             % Determine weight vector
             weights = arg.Weight(match);
             [R,T] = eq_point(q(:,q_idx),pt(:,p_idx), weights(p_idx));
-        case 'cosine'
-            [R,T] = eq_cosine(q(:,q_idx),pt(:,p_idx),arg.Normals(:,q_idx));
         case 'plane'
             weights = arg.Weight(match);
             [R,T] = eq_plane(q(:,q_idx),pt(:,p_idx),arg.Normals(:,q_idx),weights(p_idx));
@@ -380,43 +378,6 @@ R = [cy*cz cz*sx*sy-cx*sz cx*cz*sy+sx*sz;
      -sy cy*sx cx*cy];
     
 T = X(4:6);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [R,T] = eq_cosine(q,p,nq)
-
-np = lsqnormest(p, 4);
-
-thetaq = elevation(nq(3,:));
-thetap = elevation(np(3,:));
-
-phiq = azimuth(nq(1,:),nq(2,:));
-phip = azimuth(np(1,:),np(2,:));
-
-rottheta = sum(atan2(sin(thetaq).*cos(thetap) - cos(thetaq).*sin(thetap), ...
-                 cos(thetaq).*cos(thetap) + sin(thetaq).*sin(thetap)));
-             
-rotphi = sum(atan2(sin(phiq).*cos(phip) - cos(phiq).*sin(phip), ...
-                 cos(phiq).*cos(phip) + sin(phiq).*sin(phip)));
-             
-cx = cos(rotphi); cy = cos(0); cz = cos(rottheta); 
-sx = sin(rotphi); sy = sin(0); sz = sin(rottheta); 
-
-R = [cy*cz cz*sx*sy-cx*sz cx*cz*sy+sx*sz;
-     cy*sz cx*cz+sx*sy*sz cx*sy*sz-cz*sx;
-     -sy cy*sx cx*cy];
-
-q_bar = q * transpose(ones(1,length(q)));
-p_bar = p * transpose(ones(1,length(p)));
-T = q_bar - R*p_bar;
-
-function thetas = elevation(zs)
-
-thetas = (pi / 2) - asin(zs);
-
-function phis = azimuth(xs, ys)
-
-phis = atan2(ys, xs);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
