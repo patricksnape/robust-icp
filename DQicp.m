@@ -1,28 +1,56 @@
-function T = DQicp(M, D)
-%UNTITLED4 Dual quaternion ICP
-%   Detailed explanation goes here
+function [T] = DQicp(M, D, varargin)
+% DQICP Closed-form dual quaternion ICP
+%
+% Walker, M. W., Shao, L. & Volz, R. A. (1991) 
+% Estimating 3-D location parameters using dual number quaternions. 
+% CVGIP: Image Understanding. 54 (3), 358-367.
+%
+% [T] = DQicp(M,D)   returns the homogenous transformation matrix T
+% that minimizes the distances from (T * p + TT) to q.
+%
+% [T] = DQicp(M, D, Mv, Dv)   uses the two sets of feature vectors Mv and 
+% Dv in conjunction with the point data
+%
+% Author: Patrick Snape
+% Date: 16 Jan 2013
+
+%% Parse input
+inp = inputParser;
+
+% Model point cloud - 3xK
+inp.addRequired('M', @(x)isreal(x) && size(x,1) == 3);
+% Data point cloud - 3xK
+inp.addRequired('D', @(x)isreal(x) && size(x,1) == 3);
+% Model feature vectors - 3xL
+inp.addOptional('Mv', 10, @(x)isreal(x) && size(x,1) == 3);
+% Data feature vectors - 3xL
+inp.addOptional('Dv', 10, @(x)isreal(x) && size(x,1) == 3);
+
+inp.parse(M, D, varargin{:});
+arg = inp.Results;
+clear('inp');
 
 %% Convert to position quaternion
 
-M = 0.5 * [M; zeros(1, size(M, 2))];
-D = 0.5 * [D; zeros(1, size(D, 2))];
+% Number of points - assume size(D) == size(M)
+k = size(M, 2);
 
-% Number of points
-n = size(M, 2);
+M = 0.5 * [arg.M; zeros(1, k)];
+D = 0.5 * [arg.D; zeros(1, k)];
 
 %% Closed-form solution
 
 C1 = zeros(4,4);
-for i=1:n
+for i=1:k
     C1 = C1 + Q(D(:, i))' * W(M(:, i));
 end
 C1 = C1 * -2;
 
 % Assumes all weight = 1 therefore sum(weights) = number of points
-C2 = n * eye(4);
+C2 = k * eye(4);
 
 C3 = zeros(4,4);
-for i=1:n
+for i=1:k
     C3 = C3 + (W(M(:, i)) - Q(D(:, i)));
 end
 C3 = C3 * 2;
