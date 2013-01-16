@@ -191,7 +191,7 @@ dpdists_dz = c .* (ddists_dz + Grad_distpenalty(:, 3));
 Grad_pdists = [dpdists_dx dpdists_dy dpdists_dz];
 
 % Scale back distances
-dists = dists / icp.volume_size;
+dists = pdists / icp.volume_size;
 Grad_pdists = Grad_pdists / icp.volume_size;
 
 %% Scale Jacobian by distance transform
