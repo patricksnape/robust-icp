@@ -1,15 +1,20 @@
 function [T] = DQicp(M, D, varargin)
 % DQICP Closed-form dual quaternion ICP
 %
-% Walker, M. W., Shao, L. & Volz, R. A. (1991) 
-% Estimating 3-D location parameters using dual number quaternions. 
+% Input: 
+%       M   (required) 3xK matrix representing a cloud of points
+%       D   (required) 3xK matrix representing a cloud of points
+%       Mv  (optional) 3xL matrix representing feature vectors for the
+%           point cloud M. Defaults to [0; 0; 0; 1]xK
+%       Dv  (optional) 3xL matrix representing feature vectors for the
+%           point cloud D. Defaults to [0; 0; 0; 1]xK
+% Output:
+%       T   returns the homogenous transformation matrix T
+%           that minimizes the distances from (T * D) to M.
+%
+% Walker, M. W., Shao, L. & Volz, R. A. (1991)
+% Estimating 3-D location parameters using dual number quaternions.
 % CVGIP: Image Understanding. 54 (3), 358-367.
-%
-% [T] = DQicp(M,D)   returns the homogenous transformation matrix T
-% that minimizes the distances from (T * p + TT) to q.
-%
-% [T] = DQicp(M, D, Mv, Dv)   uses the two sets of feature vectors Mv and 
-% Dv in conjunction with the point data
 %
 % Author: Patrick Snape
 % Date: 16 Jan 2013
@@ -17,32 +22,44 @@ function [T] = DQicp(M, D, varargin)
 %% Parse input
 inp = inputParser;
 
-% Model point cloud - 3xK
+
 inp.addRequired('M', @(x)isreal(x) && size(x,1) == 3);
-% Data point cloud - 3xK
 inp.addRequired('D', @(x)isreal(x) && size(x,1) == 3);
-% Model feature vectors - 3xL
-inp.addOptional('Mv', 10, @(x)isreal(x) && size(x,1) == 3);
-% Data feature vectors - 3xL
-inp.addOptional('Dv', 10, @(x)isreal(x) && size(x,1) == 3);
+
+% Default feature vectors
+default_vectors = repmat([0; 0; 0], 1, size(M, 2));
+
+inp.addOptional('Mv', default_vectors, @(x)isreal(x) && size(x,1) == 3);
+inp.addOptional('Dv', default_vectors, @(x)isreal(x) && size(x,1) == 3);
 
 inp.parse(M, D, varargin{:});
 arg = inp.Results;
 clear('inp');
 
-%% Convert to position quaternion
+%% Convert to quaternions
 
 % Number of points - assume size(D) == size(M)
-k = size(M, 2);
+k = size(arg.M, 2);
 
 M = 0.5 * [arg.M; zeros(1, k)];
 D = 0.5 * [arg.D; zeros(1, k)];
 
+% Number of feature vectors - assume size(Dv) == size(Mv)
+l = size(arg.Mv, 2);
+
+Mv = [arg.Mv; ones(1, l)];
+Dv = [arg.Dv; ones(1, l)];
+
 %% Closed-form solution
 
 C1 = zeros(4,4);
+% Points
 for i=1:k
     C1 = C1 + Q(D(:, i))' * W(M(:, i));
+end
+% Feature Vectors
+for i=1:l
+    C1 = C1 + Q(Dv(:, i))' * W(Mv(:, i));
 end
 C1 = C1 * -2;
 
@@ -68,41 +85,41 @@ R = coolquat2mat(r);
 t = W(r)' * s;
 t = 0.5 * t(1:3);
 
-T = [ 
-      R     t;
-      0 0 0 1
+T = [
+    R     t;
+    0 0 0 1
     ];
 
 end
 
-% Builds a skew matrix from quaternion q = [ vx vy vz s ]'
+%% Builds a skew matrix from quaternion q = [ vx vy vz s ]'
 function skew = K(q)
-    vx = q(1);
-    vy = q(2);
-    vz = q(3);
-    
-    skew = [ 0    -vz   vy;
-             vz    0    vx;
-            -vy    vx   0 
-           ];
+vx = q(1);
+vy = q(2);
+vz = q(3);
+
+skew = [ 0    -vz   vy;
+    vz    0    vx;
+    -vy    vx   0
+    ];
 end
 
-% Builds the Q matrix as defined in (15) from real part r = [ vx vy vz s ]'
+%% Builds the Q matrix as defined in (15) from real part r = [ vx vy vz s ]'
 function q = Q(r)
-    s = r(4);
-    
-    q = zeros(4, 4);
-    q(1:3, 1:3) = s * eye(3,3) + K(r);
-    q(:, 4) = r;
-    q(4, :) = (-r)';
+s = r(4);
+
+q = zeros(4, 4);
+q(1:3, 1:3) = s * eye(3,3) + K(r);
+q(:, 4) = r;
+q(4, :) = (-r)';
 end
 
-% Builds the W matrix as defined in (16) from real part r = [ vx vy vz s ]'
+%% Builds the W matrix as defined in (16) from real part r = [ vx vy vz s ]'
 function q = W(r)
-    s = r(4);
-    
-    q = zeros(4, 4);
-    q(1:3, 1:3) = s * eye(3,3) - K(r);
-    q(:, 4) = r;
-    q(4, :) = (-r)';
+s = r(4);
+
+q = zeros(4, 4);
+q(1:3, 1:3) = s * eye(3,3) - K(r);
+q(:, 4) = r;
+q(4, :) = (-r)';
 end
