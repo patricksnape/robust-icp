@@ -1,41 +1,34 @@
-function h_out = scatter(v,style)
-
-% SCATTER Plot a nx2 matrix as a set of points
+function h_out = scatter(cloud, style)
+% SCATTER Plot a point cloud
 %
-if nargin == 1, style = '+'; end
+% Input: 
+%       cloud   (required) 3xN or 4xN matrix representing a cloud of points
+%       style   (optional) style character. Defaults to '+'
+% Output:
+%       h_out   handle to a figure containing a plot3
+%
+% Author: Patrick Snape
+% Date: 16 Jan 13
 
-if isempty(v),
-	return
-end
+%% Parse input
+inp = inputParser;
 
-if ~isstr(style)
-  set_h = style;
+inp.addRequired('cloud', @(x)isreal(x) &&  ...
+                         (size(x, 1) == 3 || size(x, 1) == 4 || ... 
+                          size(x, 2) == 3 || size(x, 2) == 4));
+inp.addOptional('style', '+', @(x)ischar(x));
+
+inp.parse(cloud, style);
+arg = inp.Results;
+clear('inp');
+
+%% Plot
+[r, ~] = size(cloud);
+
+if r == 3 || r == 4
+    h_out = plot3(cloud(1, :), cloud(2, :), cloud(3, :), arg.style);
 else
-  set_h = [];
+    h_out = plot3(cloud(:, 1), cloud(:, 2), cloud(:, 3), arg.style);
 end
 
-[r,c]=size(v);
-if c == 2
-  if set_h
-    set(set_h, 'xdata', v(:,1), 'ydata', v(:,2));
-  else
-    h = plot(v(:,1),v(:,2),style);
-  end
-elseif c == 3
-  if set_h
-    set(set_h, 'xdata', v(:,1), 'ydata', v(:,2), 'zdata', v(:,3));
-  else
-    switch style
-    case 'poly'
-      h = patch(v(:,1), v(:,2), v(:,3), [1 1 1]/2);
-    otherwise
-      h = plot3(v(:,1), v(:,2), v(:,3), style);
-    end
-  end
-else
-  error('c != 2 or 3');
-end
-
-if nargout > 0
-  h_out = h;
 end
