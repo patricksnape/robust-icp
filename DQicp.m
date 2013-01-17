@@ -47,8 +47,8 @@ D = 0.5 * [arg.D; zeros(1, k)];
 % Number of feature vectors - assume size(Dv) == size(Mv)
 l = size(arg.Mv, 2);
 
-Mv = [arg.Mv; ones(1, l)];
-Dv = [arg.Dv; ones(1, l)];
+Mv = [arg.Mv; zeros(1, l)];
+Dv = [arg.Dv; zeros(1, l)];
 
 %% Closed-form solution
 
@@ -79,8 +79,7 @@ A = 0.5 * (C3' * inv(C2 + C2') * C3 - C1 - C1');
 [r, ~] = eigs(A, 1);
 
 s = -inv(C2 + C2') * C3 * r;
-
-R = coolquat2mat(r);
+R = coolquat2mat(r) / sum(r.^2);
 
 t = W(r)' * s;
 t = 0.5 * t(1:3);
