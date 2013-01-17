@@ -1,6 +1,6 @@
-function R = coolquat2mat(q)
+function R = quat2rot(q)
 
-% COOLQUAT2MAT  Convert quaternion to 3x3 rotation matrix
+% QUAT2ROT  Convert quaternion to 3x3 rotation matrix
 % Input: q = [ vx vy vz s ]
 %
 % Output: R =

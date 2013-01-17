@@ -79,7 +79,7 @@ A = 0.5 * (C3' * inv(C2 + C2') * C3 - C1 - C1');
 [r, ~] = eigs(A, 1);
 
 s = -inv(C2 + C2') * C3 * r;
-R = coolquat2mat(r) / sum(r.^2);
+R = quat2rot(r) / sum(r.^2);
 
 t = W(r)' * s;
 t = 0.5 * t(1:3);
