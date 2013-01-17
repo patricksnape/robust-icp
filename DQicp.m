@@ -1,4 +1,4 @@
-function [T] = DQicp(M, D, varargin)
+function [T, E] = DQicp(M, D, varargin)
 % DQICP Closed-form dual quaternion ICP
 %
 % Input: 
@@ -11,6 +11,7 @@ function [T] = DQicp(M, D, varargin)
 % Output:
 %       T   returns the homogenous transformation matrix T
 %           that minimizes the distances from (T * D) to M.
+%       E   the total error ||T*D - M||
 %
 % Walker, M. W., Shao, L. & Volz, R. A. (1991)
 % Estimating 3-D location parameters using dual number quaternions.
@@ -79,7 +80,7 @@ A = 0.5 * (C3' * inv(C2 + C2') * C3 - C1 - C1');
 [r, ~] = eigs(A, 1);
 
 s = -inv(C2 + C2') * C3 * r;
-R = quat2rot(r) / sum(r.^2);
+R = quat2rot(r);
 
 t = W(r)' * s;
 t = 0.5 * t(1:3);
@@ -88,6 +89,8 @@ T = [
         R     t;
         0 0 0 1
     ];
+
+E = norm(T * D - M);
 
 end
 
