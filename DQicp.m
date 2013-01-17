@@ -86,8 +86,8 @@ t = W(r)' * s;
 t = 0.5 * t(1:3);
 
 T = [
-    R     t;
-    0 0 0 1
+        R     t;
+        0 0 0 1
     ];
 
 end
@@ -98,10 +98,11 @@ vx = q(1);
 vy = q(2);
 vz = q(3);
 
-skew = [ 0    -vz   vy;
-    vz    0    vx;
-    -vy    vx   0
-    ];
+skew = [ 
+            0    -vz   vy;
+            vz    0    vx;
+           -vy    vx   0
+       ];
 end
 
 %% Builds the Q matrix as defined in (15) from real part r = [ vx vy vz s ]'
