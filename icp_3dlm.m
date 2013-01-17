@@ -38,7 +38,7 @@ BOX = [
   0 0 1;
   ];
 
-scatter(BOX * (VOLUME_SIZE+1), 'b-')
+scatter(BOX * (VOLUME_SIZE+1), 'b-');
 hold on
 set(scatter(Model, 'r.'), 'markersize', 0.5)
 camlight
