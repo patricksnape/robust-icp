@@ -102,7 +102,7 @@ vz = q(3);
 
 skew = [ 
             0    -vz   vy;
-            vz    0    vx;
+            vz    0   -vx;
            -vy    vx   0
        ];
 end
