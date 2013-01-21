@@ -68,7 +68,9 @@ end
 C1 = C1 * -2;
 
 % Assumes all weight = 1 therefore sum(weights) = number of points
-C2 = k * eye(4);
+% C2 = k * eye(4);
+% inv(C2 * C2') = 1 / k^2 = w
+w = 1 / (k^2);
 
 C3 = zeros(4,4);
 for i=1:k
@@ -76,13 +78,15 @@ for i=1:k
 end
 C3 = C3 * 2;
 
-A = 0.5 * (C3' * inv(C2 + C2') * C3 - C1 - C1');
+% A = 0.5 * (C3' * inv(C2 * C2') * C3 - C1 - C1');
+A = 0.5 * (C3' * (w * C3) - C1 - C1');
 
 %% Results and build homogenous transformation matrix, T
 
 [r, ~] = eigs(A, 1);
 
-s = -inv(C2 + C2') * C3 * r;
+% s = -inv(C2 * C2') * C3 * r;
+s = -w * C3 * r;
 R = quat2rot(r);
 
 t = W(r)' * s;
@@ -97,7 +101,7 @@ E = norm(T * D - M);
 
 end
 
-%% Builds a skew matrix from quaternion q = [ vx vy vz s ]'
+%% Builds a skew matrix from quaternion q = [ vx vy vz s ]' as defined in (5)
 function skew = K(q)
 vx = q(1);
 vy = q(2);
