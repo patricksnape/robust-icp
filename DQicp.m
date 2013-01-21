@@ -52,15 +52,18 @@ Mv = [arg.Mv; zeros(1, l)];
 Dv = [arg.Dv; zeros(1, l)];
 
 %% Closed-form solution
+%   NOTE: We have swapped the order of M and D from the paper as the paper
+%   calculates D = R*M and we want M = R*D to be consistent with other ICP
+%   methods
 
 C1 = zeros(4,4);
 % Points
 for i=1:k
-    C1 = C1 + Q(D(:, i))' * W(M(:, i));
+    C1 = C1 + Q(M(:, i))' * W(D(:, i));
 end
 % Feature Vectors
 for i=1:l
-    C1 = C1 + Q(Dv(:, i))' * W(Mv(:, i));
+    C1 = C1 + Q(Mv(:, i))' * W(Dv(:, i));
 end
 C1 = C1 * -2;
 
@@ -69,7 +72,7 @@ C2 = k * eye(4);
 
 C3 = zeros(4,4);
 for i=1:k
-    C3 = C3 + (W(M(:, i)) - Q(D(:, i)));
+    C3 = C3 + (W(D(:, i)) - Q(M(:, i)));
 end
 C3 = C3 * 2;
 
