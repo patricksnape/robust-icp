@@ -28,7 +28,7 @@ inp.addRequired('M', @(x)isreal(x) && size(x,1) == 3);
 inp.addRequired('D', @(x)isreal(x) && size(x,1) == 3);
 
 % Default feature vectors
-default_vectors = repmat([0; 0; 0], 1, size(M, 2));
+default_vectors = zeros(3, size(M, 2));
 
 inp.addOptional('Mv', default_vectors, @(x)isreal(x) && size(x,1) == 3);
 inp.addOptional('Dv', default_vectors, @(x)isreal(x) && size(x,1) == 3);
@@ -101,7 +101,7 @@ E = norm(T * D - M);
 
 end
 
-%% Builds a skew matrix from quaternion q = [ vx vy vz s ]' as defined in (5)
+%% Builds a skew matrix as defined in (5) from quaternion q = [ vx vy vz s ]' 
 function skew = K(q)
 vx = q(1);
 vy = q(2);
