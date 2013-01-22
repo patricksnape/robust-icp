@@ -5,9 +5,9 @@ function [T, E] = DQicp(M, D, varargin)
 %       M   (required) 3xK matrix representing a cloud of points
 %       D   (required) 3xK matrix representing a cloud of points
 %       Mv  (optional) 3xL matrix representing feature vectors for the
-%           point cloud M. Defaults to [0; 0; 0; 1]xK
+%           point cloud M. Defaults to [0; 0; 0; 0]xK
 %       Dv  (optional) 3xL matrix representing feature vectors for the
-%           point cloud D. Defaults to [0; 0; 0; 1]xK
+%           point cloud D. Defaults to [0; 0; 0; 0]xK
 % Output:
 %       T   returns the homogenous transformation matrix T
 %           that minimizes the distances from (T * D) to M.
