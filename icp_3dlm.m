@@ -109,9 +109,9 @@ params = params .* PARAMSCALE;
 % Compute transformed data points and Jacobians
 [Tdata, Jx, Jy, Jz] = icp_3d_err_transformed(params, icp.Data);
 
-% Index each row of Tdata into the DT.  It's oddly ordered...
-i = (Tdata(:, 2));
-j = (Tdata(:, 1));
+% Index each row of Tdata into the DT
+i = (Tdata(:, 1));
+j = (Tdata(:, 2));
 k = (Tdata(:, 3));
 
 %% Compute distance penalties near boundaries
@@ -125,7 +125,7 @@ HI = icp.volume_size - 3;
 I = find(i < LO);
 if ~isempty(I)
   distpenalty(I) = distpenalty(I) + (LO - i(I)).^2;
-  Grad_distpenalty(I, 2) = Grad_distpenalty(I,2) + 2 * (LO - i(I));
+  Grad_distpenalty(I, 1) = Grad_distpenalty(I, 1) + 2 * (LO - i(I));
   i(I) = LO;
 end
 
@@ -133,7 +133,7 @@ end
 I = find(j < LO);
 if ~isempty(I)
   distpenalty(I) = distpenalty(I) + (LO - j(I)).^2;
-  Grad_distpenalty(I, 1) = Grad_distpenalty(I,1) + 2 * (LO - j(I));
+  Grad_distpenalty(I, 2) = Grad_distpenalty(I, 2) + 2 * (LO - j(I));
   j(I) = LO;
 end
 
@@ -141,7 +141,7 @@ end
 I = find(k < LO);
 if ~isempty(I)
   distpenalty(I) = distpenalty(I) + (LO - k(I)).^2;
-  Grad_distpenalty(I, 3) = Grad_distpenalty(I,3) + 2 * (LO - k(I));
+  Grad_distpenalty(I, 3) = Grad_distpenalty(I, 3) + 2 * (LO - k(I));
   k(I) = LO;
 end
 
@@ -149,7 +149,7 @@ end
 I = find(i >= HI);
 if ~isempty(I)
   distpenalty(I) = distpenalty(I) + (i(I) - HI).^2;
-  Grad_distpenalty(I, 2) = Grad_distpenalty(I,2) + 2 * (i(I) - HI);
+  Grad_distpenalty(I, 1) = Grad_distpenalty(I, 1) + 2 * (i(I) - HI);
   i(I) = HI;
 end
 
@@ -157,7 +157,7 @@ end
 I = find(j >= HI);
 if ~isempty(I)
   distpenalty(I) = distpenalty(I) + (j(I) - HI).^2;
-  Grad_distpenalty(I, 1) = Grad_distpenalty(I,1) + 2 * (j(I) - HI);
+  Grad_distpenalty(I, 2) = Grad_distpenalty(I, 2) + 2 * (j(I) - HI);
   j(I) = HI;
 end
 
@@ -165,15 +165,15 @@ end
 I = find(k >= HI);
 if ~isempty(I)
   distpenalty(I) = distpenalty(I) + (k(I) - HI).^2;
-  Grad_distpenalty(I, 3) = Grad_distpenalty(I,3) + 2 * (k(I) - HI);
+  Grad_distpenalty(I, 3) = Grad_distpenalty(I, 3) + 2 * (k(I) - HI);
   k(I) = HI;
 end
 
 %% Interpolate distances and calculate m-estimate
 
 dists = interp3(icp.ModelDistanceTransform, i, j, k, 'linear');
-ddists_dx = interp3(icp.ModelDy, i, j, k, 'linear'); % x,y swapped
-ddists_dy = interp3(icp.ModelDx, i, j, k, 'linear');
+ddists_dx = interp3(icp.ModelDx, i, j, k, 'linear');
+ddists_dy = interp3(icp.ModelDy, i, j, k, 'linear');
 ddists_dz = interp3(icp.ModelDz, i, j, k, 'linear');
 
 % Add penalties to distances, so points outside the DT get
@@ -204,7 +204,7 @@ J = Grad_pdists(:, L*1) .* Jx + ...
     Grad_pdists(:, L*3) .* Jz;
 
 % Scale down J
-J = J .* PARAMSCALE(ones(size(J,1), 1),:);
+J = J .* PARAMSCALE(ones(size(J, 1), 1),:);
 
 J = double(J);
 dists = double(dists);
@@ -219,9 +219,9 @@ fprintf('%5.2f ', params);
 fprintf('err %g\n', norm(dists));
 
 set(icp.handle, ...
-  'xdata', Tdata(:,1), ...
-  'ydata', Tdata(:,2), ...
-  'zdata', Tdata(:,3));
+  'xdata', Tdata(:, 1), ...
+  'ydata', Tdata(:, 2), ...
+  'zdata', Tdata(:, 3));
 drawnow
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
