@@ -14,9 +14,7 @@ VOLUME_SIZE = 100;
 D = pointclouddt(Model, VOLUME_SIZE);
 
 % Compute derivatives of D
-dDdX = convn(D, [1,0,-1]/2, 'same');
-dDdY = convn(D, [1,0,-1]'/2, 'same');
-dDdZ = convn(D, cat(3, 1, 0, -1)/2, 'same');
+[dDdX, dDdY, dDdZ] = gradient(D);
 
 clf
 BOX = [
