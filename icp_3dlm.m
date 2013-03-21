@@ -132,7 +132,7 @@ d_z2 = d_dz .^ 2;
 
 denom = sqrt(d_x2 + d_y2 + d_z2);
 % denom = median_adjusted(denom);
-% df_g1_denom = sqrt(dx2 + dy2 + dz2) .^ 3;
+% df_g1_denom = sqrt(d_x2 + d_y2 + d_z2) .^ 3;
 
 % Prevent division by zero by adding the median
 % Take the median ignoring the dead voxels
@@ -149,18 +149,22 @@ d_dz = d_dz ./ denom;
 % Calculate residuals
 dists = (m_dx - d_dx) + (m_dy - d_dy) + (m_dz - d_dz);
 
-% dF_g1x = repmat(dF_g1x .* d_dx, 1, N_p);
-% dF_g1y = repmat(dF_g1y .* d_dy, 1, N_p);
-% dF_g1z = repmat(dF_g1z .* d_dz, 1, N_p);
+dx = m_dx - d_dx;
+dy = m_dy - d_dy;
+dz = m_dz - d_dz;
+
+% dF_g1x = repmat(dF_g1x .* dx, 1, N_p);
+% dF_g1y = repmat(dF_g1y .* dy, 1, N_p);
+% dF_g1z = repmat(dF_g1z .* dz, 1, N_p);
 % Jx = dF_g1x .* Jx;
 % Jy = dF_g1y .* Jy;
 % Jz = dF_g1z .* Jz;
-d_dx = repmat(d_dx, 1, N_p);
-d_dy = repmat(d_dy, 1, N_p);
-d_dz = repmat(d_dz, 1, N_p);
-Jx = Jx .* d_dx;
-Jy = Jy .* d_dy;
-Jz = Jz .* d_dz;
+dx = repmat(dx, 1, N_p);
+dy = repmat(dy, 1, N_p);
+dz = repmat(dz, 1, N_p);
+Jx = Jx .* dx;
+Jy = Jy .* dy;
+Jz = Jz .* dz;
 
 %% Scale Jacobian by distance transform
 J = Jx + Jy + Jz;
