@@ -69,7 +69,7 @@ options = optimset('lsqnonlin');
 options.TypicalX = [1 1 1 1 1 1 1];
 options.TolFun = 0.0001;
 options.TolX = 0.00001;
-options.DiffMinChange = .001;
+options.DiffMinChange = .0001;
 options.Algorithm = 'levenberg-marquardt';
 options.maxFunEvals = 1000;
 options.Jacobian = 'on';
@@ -81,24 +81,6 @@ x = lsqnonlin(@(X) icp_error_with_derivs(X, icp), initial_p, [], [], options);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [dists, J] = icp_error_with_derivs(params, icp)
-% In:
-% icp.Data                    Nx7 data points
-% icp.ModelDistanceTransform  DT of model points
-%
-% Out:
-%   dists = Nx1
-%       J = Nx7
-%% Derivations:
-%
-%          TX := T(params, icp.Data(i))
-% dists(i) = DT(TX);
-%  J(i, j) = d[ DT(TX) ]/d[params(j)]
-%          = ddX[ DT ](TX) * d[TX]/d[params(j)]
-%
-% [TX, Jx, Jy, Jz] = icp_3d_err_transformed(params, icp.Data);
-%      Jx = N x 7
-%  T(i,j) = Jx .* Dx(TX) + Jy .* Dy(TX) +  Jz .* Dz(TX);
-
 %% Compte Jacobian and transform data
 %
 
@@ -131,16 +113,11 @@ d_y2 = d_dy .^ 2;
 d_z2 = d_dz .^ 2;
 
 denom = sqrt(d_x2 + d_y2 + d_z2);
-% denom = median_adjusted(denom);
-% df_g1_denom = sqrt(d_x2 + d_y2 + d_z2) .^ 3;
+df_g1_denom = denom .^ 3;
 
-% Prevent division by zero by adding the median
-% Take the median ignoring the dead voxels
-% df_g1_denom = median_adjusted(df_g1_denom);
-
-% dF_g1x = (d_y2 + d_z2) ./ df_g1_denom;
-% dF_g1y = (d_x2 + d_z2) ./ df_g1_denom;
-% dF_g1z = (d_x2 + d_y2) ./ df_g1_denom;
+dF_g1x = (d_y2 + d_z2) ./ df_g1_denom;
+dF_g1y = (d_x2 + d_z2) ./ df_g1_denom;
+dF_g1z = (d_x2 + d_y2) ./ df_g1_denom;
 
 d_dx = d_dx ./ denom;
 d_dy = d_dy ./ denom;
@@ -153,18 +130,12 @@ dx = m_dx - d_dx;
 dy = m_dy - d_dy;
 dz = m_dz - d_dz;
 
-% dF_g1x = repmat(dF_g1x .* dx, 1, N_p);
-% dF_g1y = repmat(dF_g1y .* dy, 1, N_p);
-% dF_g1z = repmat(dF_g1z .* dz, 1, N_p);
-% Jx = dF_g1x .* Jx;
-% Jy = dF_g1y .* Jy;
-% Jz = dF_g1z .* Jz;
-dx = repmat(dx, 1, N_p);
-dy = repmat(dy, 1, N_p);
-dz = repmat(dz, 1, N_p);
-Jx = Jx .* dx;
-Jy = Jy .* dy;
-Jz = Jz .* dz;
+dF_g1x = repmat(dF_g1x .* dx, 1, N_p);
+dF_g1y = repmat(dF_g1y .* dy, 1, N_p);
+dF_g1z = repmat(dF_g1z .* dz, 1, N_p);
+Jx = dF_g1x .* Jx;
+Jy = dF_g1y .* Jy;
+Jz = dF_g1z .* Jz;
 
 %% Scale Jacobian by distance transform
 J = Jx + Jy + Jz;
@@ -200,10 +171,3 @@ p7 = p(7);
 
 R = quat2rot([p1 p2 p3 p4]) / sum([p1 p2 p3 p4].^2);
 t = [p5 p6 p7]';
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function res = median_adjusted(b)
-bc    = b(:);
-bc(bc == 0) = NaN;
-m_b   = nanmedian(bc);
-
-res = b + m_b;
