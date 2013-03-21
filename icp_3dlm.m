@@ -20,7 +20,7 @@ initial_p = inp.Results.initial_p;
 clear('inp');
 
 if (estimate_normals)
-    Model.normals = lsqnormest(Model.vertices, 4);
+    Model.normals = lsqnormest(Model.vertices', 4);
 else
     if ~isfield(Model, 'triangles') || ~isfield(Data, 'triangles')
         error('Must pass triangle list')
@@ -30,6 +30,7 @@ else
 end
 
 %% Setup plot
+clf
 set(scatter(Model.vertices, 'r.'), 'markersize', 0.5)
 camlight
 hold on
@@ -44,16 +45,16 @@ drawnow
 global run_icp3d_iter
 run_icp3d_iter = 0;
 
-m_dx = Model.normals(1, :);
-m_dy = Model.normals(2, :);
-m_dz = Model.normals(3, :);
+m_dx = Model.normals(1, :)';
+m_dy = Model.normals(2, :)';
+m_dz = Model.normals(3, :)';
 
 m_x2 = m_dx .^ 2;
 m_y2 = m_dy .^ 2;
 m_z2 = m_dz .^ 2;
 
 denom = sqrt(m_x2 + m_y2 + m_z2);
-denom = median_adjusted(denom);
+% denom = median_adjusted(denom);
 
 icp.M_dx = m_dx ./ denom;
 icp.M_dy = m_dy ./ denom;
@@ -111,49 +112,52 @@ N_p = length(params);
 [Tdata, Jx, Jy, Jz] = icp_3d_err_transformed(params, data);
 
 %% Interpolate distances and calculate m-estimate
-idx = knnsearch(icp.kdObj, Tdata);
-closest_Tdata = Tdata(idx, :);
-
 if (icp.EstimateNormals)
-    [d_dx, d_dy, d_dz] = estimate_normals(closest_Tdata);
+    normals = lsqnormest(Tdata', 4);
 else
-    normals = compute_normal(closest_Tdata, icp.Data.triangles);
-    d_dx = normals(1, :);
-    d_dy = normals(2, :);
-    d_dz = normals(3, :);
+    normals = compute_normal(Tdata, icp.Data.triangles);
 end
 
-% Calculate df(g1,x[0]) / dg1,x[0]
-dx2 = d_dx .^ 2;
-dy2 = d_dy .^ 2;
-dz2 = d_dz .^ 2;
+idx = knnsearch(icp.kdObj, Tdata);
+closest_norms = normals(:, idx);
 
-denom = sqrt(dx2 + dy2 + dz2);
-denom = median_adjusted(denom);
-% df_g1_denom = sqrt(ddists_dx2 + ddists_dy2 + ddists_dz2) .^ 3;
+d_dx = closest_norms(1, :)';
+d_dy = closest_norms(2, :)';
+d_dz = closest_norms(3, :)';
+
+% Calculate df(g1,x[0]) / dg1,x[0]
+d_x2 = d_dx .^ 2;
+d_y2 = d_dy .^ 2;
+d_z2 = d_dz .^ 2;
+
+denom = sqrt(d_x2 + d_y2 + d_z2);
+% denom = median_adjusted(denom);
+% df_g1_denom = sqrt(dx2 + dy2 + dz2) .^ 3;
 
 % Prevent division by zero by adding the median
 % Take the median ignoring the dead voxels
 % df_g1_denom = median_adjusted(df_g1_denom);
 
-% dF_g1x = (ddists_dy2 + ddists_dz2) ./ df_g1_denom;
-% dF_g1y = (ddists_dx2 + ddists_dz2) ./ df_g1_denom;
-% dF_g1z = (ddists_dx2 + ddists_dy2) ./ df_g1_denom;
-% 
+% dF_g1x = (d_y2 + d_z2) ./ df_g1_denom;
+% dF_g1y = (d_x2 + d_z2) ./ df_g1_denom;
+% dF_g1z = (d_x2 + d_y2) ./ df_g1_denom;
+
 d_dx = d_dx ./ denom;
 d_dy = d_dy ./ denom;
 d_dz = d_dz ./ denom;
 
+% Calculate residuals
 dists = (m_dx - d_dx) + (m_dy - d_dy) + (m_dz - d_dz);
-% dF_g1x = repmat(dF_g1x, 1, N_p);
-% dF_g1y = repmat(dF_g1y, 1, N_p);
-% dF_g1z = repmat(dF_g1z, 1, N_p);
-% Jx = dF_g1x .* dg1x_dp;
-% Jy = dF_g1y .* dg1y_dp;
-% Jz = dF_g1z .* dg1z_dp;
-d_dx = repmat(d_dx', 1, N_p);
-d_dy = repmat(d_dy', 1, N_p);
-d_dz = repmat(d_dz', 1, N_p);
+
+% dF_g1x = repmat(dF_g1x .* d_dx, 1, N_p);
+% dF_g1y = repmat(dF_g1y .* d_dy, 1, N_p);
+% dF_g1z = repmat(dF_g1z .* d_dz, 1, N_p);
+% Jx = dF_g1x .* Jx;
+% Jy = dF_g1y .* Jy;
+% Jz = dF_g1z .* Jz;
+d_dx = repmat(d_dx, 1, N_p);
+d_dy = repmat(d_dy, 1, N_p);
+d_dz = repmat(d_dz, 1, N_p);
 Jx = Jx .* d_dx;
 Jy = Jy .* d_dy;
 Jz = Jz .* d_dz;
