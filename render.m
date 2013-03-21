@@ -1,5 +1,9 @@
 function render(vertices, triangles, normals)
 
 options = [];
-options.normal = normals;
+if ~exist('normals', 'var')
+    options.normals = [];
+else
+    options.normal = normals;
+end
 plot_mesh(vertices, triangles, options);
