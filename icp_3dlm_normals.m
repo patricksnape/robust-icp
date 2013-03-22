@@ -69,9 +69,8 @@ options = optimset('lsqnonlin');
 options.TypicalX = [1 1 1 1 1 1 1];
 options.TolFun = 0.0001;
 options.TolX = 0.00001;
-options.DiffMinChange = .0001;
+options.DiffMinChange = .001;
 options.Algorithm = 'levenberg-marquardt';
-options.maxFunEvals = 1000;
 options.Jacobian = 'on';
 options.DerivativeCheck = 'off';
 
@@ -79,8 +78,14 @@ x = lsqnonlin(@(X) icp_error_with_derivs(X, icp), initial_p, [], [], options);
 
 [R, t] = icp_deparam(x);
 
-[~, error] = knnsearch(Model.vertices, (R * Data.vertices' + repmat(t, [1 size(Data.vertices, 1)]))');
+fit = (R * Data.vertices' + repmat(t, [1 size(Data.vertices, 1)]))';
+[~, error] = knnsearch(Model.vertices, fit);
 error = norm(error);
+
+clf;
+scatter(Model.vertices, 'r.');
+hold on;
+scatter(fit, 'b.');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [dists, J] = icp_error_with_derivs(params, icp)
@@ -133,9 +138,9 @@ dx = m_dx - d_dx;
 dy = m_dy - d_dy;
 dz = m_dz - d_dz;
 
-dF_g1x = repmat(dx, 1, N_p);
-dF_g1y = repmat(dy, 1, N_p);
-dF_g1z = repmat(dz, 1, N_p);
+dF_g1x = repmat(dF_g1x .* dx, 1, N_p);
+dF_g1y = repmat(dF_g1y .* dy, 1, N_p);
+dF_g1z = repmat(dF_g1z .* dz, 1, N_p);
 Jx = dF_g1x .* Jx;
 Jy = dF_g1y .* Jy;
 Jz = dF_g1z .* Jz;

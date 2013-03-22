@@ -38,7 +38,7 @@ BOX = [
 
 scatter(BOX * (VOLUME_SIZE+1), 'b-');
 hold on
-set(scatter(Model, 'r.'), 'markersize', 0.5)
+set(scatter(Model, 'r.'), 'markersize', 0.5);
 camlight
 hold on
 h = scatter(Data, '.');
@@ -67,7 +67,6 @@ options.TolFun = 0.0001;
 options.TolX = 0.00001;
 options.DiffMinChange = .001;
 options.Algorithm = 'levenberg-marquardt';
-options.maxFunEvals = 1000;
 options.Jacobian = 'on';
 options.DerivativeCheck = 'off';
 params = [0 0 0 1 0 0 0]; % quat, tx, ty, tz
@@ -80,8 +79,14 @@ x = lsqnonlin(@(X) icp_error_with_derivs(X, icp), params, [], [], options);
 
 [R, t] = icp_deparam(x);
 
-[~, error] = knnsearch(model, (R * data' + repmat(t, [1 size(data, 1)]))');
+fit = (R * data' + repmat(t, [1 size(data, 1)]))';
+[~, error] = knnsearch(model, fit);
 error = norm(error);
+
+clf;
+scatter(model, 'r.');
+hold on;
+scatter(fit, 'b.');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [dists, J] = icp_error_with_derivs(params, icp)
