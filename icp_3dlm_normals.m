@@ -1,4 +1,4 @@
-function [x, R, t] = icp_3dlm_normals(Model, Data, varargin)
+function [x, R, t, error] = icp_3dlm_normals(Model, Data, varargin)
 
 % RUN_ICP3D     A function
 %               ...
@@ -78,6 +78,9 @@ options.DerivativeCheck = 'off';
 x = lsqnonlin(@(X) icp_error_with_derivs(X, icp), initial_p, [], [], options);
 
 [R, t] = icp_deparam(x);
+
+[~, error] = knnsearch(Model.vertices, (R * Data.vertices' + repmat(t, [1 size(Data.vertices, 1)]))');
+error = norm(error);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [dists, J] = icp_error_with_derivs(params, icp)

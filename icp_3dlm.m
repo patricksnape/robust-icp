@@ -1,4 +1,4 @@
-function [x, R, t] = icp_3dlm(Model, Data, initial_p)
+function [x, R, t, error] = icp_3dlm(model, data, initial_p)
 
 % RUN_ICP3D     A function
 %               ...
@@ -8,7 +8,7 @@ function [x, R, t] = icp_3dlm(Model, Data, initial_p)
 
 VOLUME_SIZE = 100;
 
-[Model, Data] = scale_and_centre(Model, Data, VOLUME_SIZE);
+[Model, Data] = scale_and_centre(model, data, VOLUME_SIZE);
 
 % Make model DT
 D = pointclouddt(Model, VOLUME_SIZE);
@@ -79,6 +79,9 @@ end
 x = lsqnonlin(@(X) icp_error_with_derivs(X, icp), params, [], [], options);
 
 [R, t] = icp_deparam(x);
+
+[~, error] = knnsearch(model, (R * data' + repmat(t, [1 size(data, 1)]))');
+error = norm(error);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [dists, J] = icp_error_with_derivs(params, icp)
