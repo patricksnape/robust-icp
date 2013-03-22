@@ -179,8 +179,8 @@ ddists_dz = interp3(icp.ModelDz, i, j, k, 'linear');
 % Add penalties to distances, so points outside the DT get
 % an upper-bound distance to the model.
 dists = dists + 1e-4;
-pdists = sqrt(awf_m_estimator('huber', dists, icp.volume_size) + distpenalty);
-mprime = awf_m_estimator('Dhuber', dists, icp.volume_size);
+pdists = sqrt(awf_m_estimator('ls', dists, icp.volume_size) + distpenalty);
+mprime = awf_m_estimator('Dls', dists, icp.volume_size);
 c = mprime ./ (2 * pdists);
 
 dpdists_dx = c .* (ddists_dx + Grad_distpenalty(:, 1));
