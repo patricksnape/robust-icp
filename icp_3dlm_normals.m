@@ -1,4 +1,4 @@
-function [x, R, t] = icp_3dlm(Model, Data, varargin)
+function [x, R, t] = icp_3dlm_normals(Model, Data, varargin)
 
 % RUN_ICP3D     A function
 %               ...
