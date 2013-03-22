@@ -54,11 +54,11 @@ m_y2 = m_dy .^ 2;
 m_z2 = m_dz .^ 2;
 
 denom = sqrt(m_x2 + m_y2 + m_z2);
-% denom = median_adjusted(denom);
 
-icp.M_dx = m_dx ./ denom;
-icp.M_dy = m_dy ./ denom;
-icp.M_dz = m_dz ./ denom;
+m_dx = m_dx ./ denom;
+m_dy = m_dy ./ denom;
+m_dz = m_dz ./ denom;
+icp.Mnormals = [m_dx, m_dy, m_dz]';
 
 icp.Data = Data;
 icp.handle = h;
@@ -85,9 +85,6 @@ function [dists, J] = icp_error_with_derivs(params, icp)
 %
 
 data = icp.Data.vertices;
-m_dx = icp.M_dx;
-m_dy = icp.M_dy;
-m_dz = icp.M_dz;
 N_p = length(params);
 
 % Compute transformed data points and Jacobians
@@ -101,11 +98,14 @@ else
 end
 
 idx = knnsearch(icp.kdObj, Tdata);
-closest_norms = normals(:, idx);
+closest_norms = icp.Mnormals(:, idx);
+m_dx = closest_norms(1, :)';
+m_dy = closest_norms(2, :)';
+m_dz = closest_norms(3, :)';
 
-d_dx = closest_norms(1, :)';
-d_dy = closest_norms(2, :)';
-d_dz = closest_norms(3, :)';
+d_dx = normals(1, :)';
+d_dy = normals(2, :)';
+d_dz = normals(3, :)';
 
 % Calculate df(g1,x[0]) / dg1,x[0]
 d_x2 = d_dx .^ 2;
@@ -130,9 +130,9 @@ dx = m_dx - d_dx;
 dy = m_dy - d_dy;
 dz = m_dz - d_dz;
 
-dF_g1x = repmat(dF_g1x .* dx, 1, N_p);
-dF_g1y = repmat(dF_g1y .* dy, 1, N_p);
-dF_g1z = repmat(dF_g1z .* dz, 1, N_p);
+dF_g1x = repmat(dx, 1, N_p);
+dF_g1y = repmat(dy, 1, N_p);
+dF_g1z = repmat(dz, 1, N_p);
 Jx = dF_g1x .* Jx;
 Jy = dF_g1y .* Jy;
 Jz = dF_g1z .* Jz;
