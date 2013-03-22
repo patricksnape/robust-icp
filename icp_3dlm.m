@@ -97,7 +97,7 @@ else
     normals = compute_normal(Tdata, icp.Data.triangles);
 end
 
-idx = knnsearch(icp.kdObj, Tdata);
+[idx, pdists] = knnsearch(icp.kdObj, Tdata);
 closest_norms = icp.Mnormals(:, idx);
 m_dx = closest_norms(1, :)';
 m_dy = closest_norms(2, :)';
@@ -150,7 +150,7 @@ fprintf('Iter %3d ', run_icp3d_iter);
 run_icp3d_iter = run_icp3d_iter + 1;
 
 fprintf('%5.2f ', params);
-fprintf('err %g\n', norm(dists));
+fprintf('err %g\n', norm(pdists));
 
 set(icp.handle, ...
   'xdata', Tdata(:, 1), ...
