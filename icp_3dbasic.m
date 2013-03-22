@@ -12,7 +12,7 @@ model = awf_translate_pts(model, -model_centre);
 data_centre = mean(data);
 data = awf_translate_pts(data, -data_centre);
 
-lmdata.model = model;
+lmdata.kdObj = KDTreeSearcher(model);
 lmdata.data = data;
 
 figure(1)
@@ -41,7 +41,6 @@ options.TolFun = 0.0001;
 options.TolX = 0.00001;
 options.DiffMinChange = .001;
 options.LargeScale = 'on';
-options.maxFunEvals = 1000;
 params = [0 0 0 1 0 0 0]; % quat, tx, ty, tz
 
 params = lsqnonlin(@(X) icp_3derror(X, lmdata), params, [], [], options);
@@ -50,7 +49,7 @@ params = lsqnonlin(@(X) icp_3derror(X, lmdata), params, [], [], options);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Error function
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function Dists = icp_3derror(params, lm)
+function dists = icp_3derror(params, lm)
 % 1. Extract R, t
 [R,t] = icp_deparam(params);
 
@@ -59,21 +58,24 @@ t = t(:)'; % colvec
 % 2. Evaluate
 
 D = lm.data;
-D = D * R' + t(ones(1,size(D,1)), :);
+D = D * R' + t(ones(1, size(D, 1)), :);
 
-[~, Dists] = knnsearch(lm.model, D);
+[~, dists] = knnsearch(lm.kdObj, D);
 
-stdDists = std(Dists);
-Dists = awf_m_estimator('huber', Dists, stdDists);
+stdDists = std(dists);
+dists = awf_m_estimator('ls', dists, stdDists);
 
 global run_icp3d_iter
 fprintf('Iter %3d ', run_icp3d_iter);
 run_icp3d_iter = run_icp3d_iter + 1;
 
 fprintf('%5.2f ', params);
-fprintf('err %g\n', norm(Dists));
+fprintf('err %.2f\n', norm(dists));
 
-scatter(D, lm.h);
+set(lm.h, ...
+  'xdata', D(:, 1), ...
+  'ydata', D(:, 2), ...
+  'zdata', D(:, 3));
 drawnow
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
